@@ -1,0 +1,10 @@
+name: Haplogrep
+description: Haplogrep, see haplogrep.uibk.ac.at for details
+category: Genepi IBK
+
+cluster:
+  image: us-east-1/ami-da0cf8b3
+  type: m1.large,m1.xlarge
+  ports: 80
+  installMapred: false
+  execScript: bash.sh

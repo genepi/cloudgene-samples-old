@@ -1,0 +1,236 @@
+name: MyRNA
+description: A cloud computing tool for calculating differential gene expression in large RNA-seq datasets. Myrna uses Bowtie for short read alignment and R/Bioconductor for interval calculations, normalization, and statistical testing. These tools are combined in an automatic, parallel pipeline.
+version: 1.1.2
+category: Genetics
+website: http://bowtie-bio.sourceforge.net/myrna
+author: Ben Langmead et al.
+
+
+cluster:
+  image: us-east-1/ami-31bc7758
+  type: m1.large,m1.xlarge
+  ports: 80,50030,50070
+  user: ubuntu
+  service: hadoop
+  installMapred: true
+  initScript: install.sh  
+   
+
+mapred:
+
+  steps:
+
+    - name: Preprocessing
+      mapper: Copy.pl --compress=gzip --stop=0 --maxperfile=500000 --s --push=$temp/preproc
+      params: -input $manifest
+              -output $temp/preproc
+              -inputformat org.apache.hadoop.mapred.lib.NLineInputFormat
+              -numReduceTasks 0
+              -file Copy.pl
+              -file Get.pm
+              -file Counters.pm
+              -file Util.pm
+              -file Tools.pm
+              -file AWS.pm
+
+
+
+    - name: Alignment
+      mapper: Align.pl --discard-reads=$discard_fraction --ref=$reference --destdir=/tmp/$job_id --partlen=1000000 --qual=$quality --truncate=$trunctate_length --globals=$temp/globals --discard-mate=$discard_mate --pool-trim-length=0     -- --partition -1000000 --mm -t --hadoopout --startverbose $bowtie_args
+      params: -input $temp/preproc
+              -output $temp/align
+              -numReduceTasks 0
+              -file Align.pl
+              -file Get.pm
+              -file Counters.pm
+              -file Util.pm
+              -file Tools.pm
+              -file AWS.pm
+
+
+
+    - name: Olaps
+      mapper: /bin/cat
+      reducer: Assign.pl --ivaljar=$reference --maxalns=350000 --partbin=200 --influence=1 --ival-model=ui --globals=$temp/globals  --binwidth=0 --destdir=/tmp/$job_id --globals=$temp/globals
+      params: -D stream.num.map.output.key.fields=3
+              -D mapred.text.key.partitioner.options=-k1,2
+              -input $temp/align
+              -output $temp/olaps
+              -partitioner org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner
+              -numReduceTasks 32
+              -file Assign.pl
+              -file Assign.R
+              -file Get.pm
+              -file Counters.pm
+              -file Util.pm
+              -file Tools.pm
+              -file AWS.pm
+
+
+
+    - name: Normal
+      mapper: /bin/cat
+      reducer: Normal.pl  --normal=lup --output=$temp/count
+      params: -D stream.num.map.output.key.fields=2
+              -D mapred.text.key.partitioner.options=-k1,1
+              -input $temp/olaps
+              -output $temp/normal
+              -partitioner org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner
+              -numReduceTasks 16
+              -file Normal.pl
+              -file Get.pm
+              -file Counters.pm
+              -file Util.pm
+              -file Tools.pm
+              -file AWS.pm
+
+
+
+    - name: Stats
+      mapper: /bin/cat
+      reducer: Stats.pl --family=$family --errdir=/home/hadoop/ --globals=$temp/globals --destdir=/tmp/$job_id --add-fudge=0 --nulls=$nulls
+      params: -D stream.num.map.output.key.fields=2
+              -D mapred.text.key.partitioner.options=-k1,1
+              -input $temp/normal
+              -output $temp/stats
+              -partitioner org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner
+              -numReduceTasks 32
+              -file Stats.pl
+              -file Stats.R
+              -file Get.pm
+              -file Counters.pm
+              -file Util.pm
+              -file Tools.pm
+              -file AWS.pm
+
+
+
+    - name: Summarize
+      mapper: /bin/cat
+      reducer: Summarize.pl  --top=$top --nulls=$nulls --chosen-genes=$temp/chosen
+      params: -D stream.num.map.output.key.fields=2
+              -D mapred.text.key.partitioner.options=-k1,1
+              -input $temp/stats
+              -output $temp/summ
+              -partitioner org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner
+              -numReduceTasks 1
+              -file Summarize.pl
+              -file Get.pm
+              -file Counters.pm
+              -file Util.pm
+              -file Tools.pm
+              -file AWS.pm
+
+
+
+    - name: Postprocess
+      mapper: PostprocessMap.pl  --destdir=/tmp/$job_id  --chosen-genes=$temp/chosen
+      reducer: PostprocessReduce.pl --ivaljar=$reference --cores=8 --destdir=/tmp/$job_id --output=$output --counts=$temp/count --minus-log
+      params: -D stream.num.map.output.key.fields=3
+              -D mapred.text.key.partitioner.options=-k1,2
+              -input $temp/summ,$temp/normal
+              -output $temp/ignoreme2
+              -partitioner org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner
+              -numReduceTasks 1
+              -file PostprocessMap.pl
+              -file PostprocessReduce.pl
+              -file Postprocess.R
+              -file Get.pm
+              -file Counters.pm
+              -file Util.pm
+              -file Tools.pm
+              -file AWS.pm
+
+
+  inputs:
+    - id: manifest
+      description: Manifest File
+      type: hdfs-file
+
+    - id: reference
+      description: Reference
+      type: hdfs-file
+
+    - id: quality
+      description: Quality encoding
+      type: list
+      value: solexa64
+      values:
+        phred33: Phred+33
+        phred64: Phred+64
+        solexa64: Solexa+64
+
+    - id: trunctate_length
+      description: Truncate length
+      type: number
+      value: 0
+
+    - id: discard_fraction
+      description: Discard fraction
+      type: number
+      value: 0
+    
+    - id: top
+      description: Genes to report in detail
+      type: number
+      value: 50
+
+    - id: bowtie_args
+      description: Bowtie options
+      type: text
+      value: -m 1
+
+    - id: family
+      description: Model family
+      type: list
+      value: poisson
+      values:
+        poisson: Poisson
+        gaussian : Gaussian
+
+    - id: nulls
+      description: Null permutations
+      type: number
+      value: 0
+
+    - id: gene_footprint
+      description: Gene Intervals
+      type: list
+      value: intersect
+      values:
+        union: Union of exons
+        intersect : Intersection of transcripts
+  
+    - id: pool_tech_reps
+      description: Pool technical replicates
+      type: checkbox
+      values:
+        true: --pool-reps
+        false:  
+
+    - id: pool_reps
+      description: Pool all replicates 
+      type: checkbox
+      values:
+        true: --pool-tech-reps
+        false:  
+
+    - id: discard_mate
+      description: For paired-end reads, use just one mate
+      type: checkbox
+      value: 0
+      values:
+        true: 2
+        false: 0
+  
+  outputs:
+    - id: output
+      description: Output Folder
+      type: hdfs-folder
+      mergeOutput: false
+      download: true
+
+    - id: temp
+      temp: true
+      type: hdfs-folder
+      download: false

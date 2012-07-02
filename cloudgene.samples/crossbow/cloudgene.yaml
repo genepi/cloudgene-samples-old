@@ -1,0 +1,108 @@
+name: Crossbow
+description: A scalable software pipeline for whole genome resequencing analysis. It combines Bowtie, an ultrafast and memory efficient short read aligner, and SoapSNP, and an accurate genotyper. These tools are combined in an automatic, parallel pipeline.
+category: Genetics
+version: 1.1.2
+website: http://bowtie-bio.sourceforge.net/crossbow
+author: Ben Langmead et al.
+
+cluster:
+  image: us-east-1/ami-31bc7758
+  type: m1.large,m1.xlarge
+  ports: 80,50030,50070
+  user: ubuntu
+  service: hadoop
+  installMapred: true
+  initScript: install.sh  
+  
+mapred:
+
+  steps:
+
+    - name: Preprocess
+      mapper: Copy.pl --compress=gzip --stop=0 --maxperfile=500000 --s --push=$temp/preproc
+      params: -input $manifest
+              -output $temp/preproc
+              -inputformat org.apache.hadoop.mapred.lib.NLineInputFormat
+              -numReduceTasks 0
+              -file Copy.pl
+              -file Get.pm
+              -file Counters.pm
+              -file Util.pm
+              -file Tools.pm
+              -file AWS.pm
+
+
+
+    - name: Alignment
+      mapper: Align.pl --discard-reads=0 --ref=$reference --destdir=/tmp/$job_id --partlen=1000000 --qual=phred33 --truncate=0 -- --partition 1000000 --mm -t --hadoopout --startverbose -M 1
+      params: -input $temp/preproc
+              -output $temp/align
+              -numReduceTasks 0
+              -file Align.pl
+              -file Get.pm
+              -file Counters.pm
+              -file Util.pm
+              -file Tools.pm
+              -file AWS.pm
+
+
+
+    - name: Call SNPs
+      mapper: /bin/cat
+      reducer: Soapsnp.pl --discard-ref-bins=0 --refjar=$reference --destdir=/tmp/$job_id  --args=-2_-u_-n_-q --haploid_args=-r_0.0001 --diploid_args=-r_0.00005_-e_0.0001 --basequal=! --partition=1000000 --haploids=all --replace-uscores
+      params: -D stream.num.map.output.key.fields=3
+              -D mapred.text.key.partitioner.options=-k1,2
+              -input $temp/align
+              -output $temp/snp
+              -numReduceTasks 32
+              -partitioner org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner
+              -file Soapsnp.pl
+              -file Get.pm
+              -file Counters.pm
+              -file Util.pm
+              -file Tools.pm
+              -file AWS.pm
+
+
+
+    - name: Postprocess
+      mapper: /bin/cat
+      reducer: CBFinish.pl  --cmapjar=$reference --destdir=/tmp/$job_id --output=$output
+      params: -D stream.num.map.output.key.fields=2
+              -D mapred.text.key.partitioner.options=-k1,1
+              -input $temp/snp
+              -output $tempignoreme2
+              -numReduceTasks 30
+              -partitioner org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner
+              -file CBFinish.pl
+              -file Get.pm
+              -file Counters.pm
+              -file Util.pm
+              -file Tools.pm
+              -file AWS.pm
+
+
+  inputs:
+    - id: manifest
+      description: Manifest File
+      type: hdfs-file
+
+    - id: reference
+      description: Reference
+      type: hdfs-file
+
+
+  outputs:
+    - id: output
+      description: Output Folder
+      type: hdfs-folder
+      mergeOutput: false
+      download: true
+      zip: false
+
+    - id: temp 
+      description: Temp
+      type: hdfs-folder
+      download: false
+      temp: true
+  
