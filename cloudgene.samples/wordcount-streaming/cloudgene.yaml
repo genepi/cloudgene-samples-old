@@ -1,0 +1,33 @@
+name: Wordcount-Streaming
+description: WordCount example reads text files and counts how often words occur. The input is text files and the output is text files, each line of which contains a word and the count of how often it occured, separated by a tab. 
+category: Hadoop Examples
+website: http://wiki.apache.org/hadoop/WordCount
+author: Hadoop Team
+
+cluster:
+  image: us-east-1/ami-da0cf8b3
+  type: m1.large,m1.xlarge
+  ports: 80,50030,50070
+  service: hadoop
+  installMapred: true
+  properties: hadoop-mapreduce.mapred.tasktracker.map.tasks.maximum=3
+
+mapred:
+  mapper: Mapper.py
+  reducer:  Reducer.py
+  params: -input $input
+          -output $output
+          -file Mapper.py
+          -file Reducer.py 
+  
+  inputs:
+  - id: input
+    description: Input Folder
+    type: hdfs-folder
+
+  outputs:
+  - id: output
+    description: Output Folder
+    type: hdfs-folder
+    mergeOutput: true
+    download: true

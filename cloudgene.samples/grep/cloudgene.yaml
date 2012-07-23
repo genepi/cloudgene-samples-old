@@ -1,0 +1,33 @@
+name: Grep
+description: Grep example extracts matching strings from text files and counts how many time they occured.
+category: Hadoop Examples
+website: http://wiki.apache.org/hadoop/Grep
+version: 1.0
+author: Hadoop Team
+
+cluster:
+  image: us-east-1/ami-da0cf8b3
+  type: m1.large,m1.xlarge
+  ports: 80,50030,50070
+  service: hadoop
+  installMapred: true
+  
+mapred:
+  jar: hadoop-examples-0.20.2-cdh3u0.jar
+  params: grep $input $output $regex
+  
+  inputs:
+  - id: input
+    description: Input Folder
+    type: hdfs-folder
+        
+  - id: regex
+    description: Regular expression
+    type: text   
+
+  outputs:
+  - id: output
+    download: true
+    description: Output Folder
+    type: hdfs-folder
+    mergeOutput: true

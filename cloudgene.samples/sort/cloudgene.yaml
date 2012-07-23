@@ -1,0 +1,35 @@
+name: Sort Pipeline
+description: Generate 10GB/node of random data using RandomWriter. Then sort the data using the sort example. 
+category: Hadoop Examples
+website: http://wiki.apache.org/hadoop/Sort
+author: Hadoop Team
+
+cluster:
+  image: us-east-1/ami-da0cf8b3
+  type: m1.large,m1.xlarge
+  ports: 80,50030,50070
+  service: hadoop
+  installMapred: true
+  
+  
+mapred:
+
+  steps:
+  - name: Random data generation
+    jar: hadoop-examples-0.20.2-cdh3u0.jar
+    params: randomwriter $rand
+
+  - name: Sort data
+    jar: hadoop-examples-0.20.2-cdh3u0.jar
+    params: sort $rand $output
+
+  outputs:
+  - id: rand
+    type: hdfs-folder
+    download: false
+    temp: true
+  - id: output
+    description: Output Folder
+    type: hdfs-folder
+    mergeOutput: true
+    download: true

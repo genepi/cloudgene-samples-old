@@ -1,0 +1,30 @@
+name: Wordcount
+description: WordCount example reads text files and counts how often words occur. The input is text files and the output is text files, each line of which contains a word and the count of how often it occured, separated by a tab. 
+category: Hadoop Examples
+website: http://wiki.apache.org/hadoop/WordCount
+version: 1.0
+author: Hadoop Team
+
+cluster:
+  image: us-east-1/ami-da0cf8b3
+  type: m1.large,m1.xlarge
+  ports: 80,50030,50070
+  service: hadoop
+  installMapred: true
+
+
+mapred:
+  jar: hadoop-examples-0.20.2-cdh3u0.jar
+  params: wordcount $input_folder $output
+  
+  inputs:
+  - id: input_folder
+    description: Input Folder
+    type: hdfs-folder
+
+  outputs:
+  - id: output
+    description: Output File
+    type: hdfs-folder
+    mergeOutput: true
+    download: true

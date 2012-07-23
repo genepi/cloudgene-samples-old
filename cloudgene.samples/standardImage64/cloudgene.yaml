@@ -1,0 +1,11 @@
+name: Image64Bit
+description: This is a Ubuntu 10.04 LTS (Lucid Lynx) Server 64-bit image to launch a cluster. Programs can be installed later via the MapRed web interface.
+version: 1.1.0
+category: VM-Images
+
+cluster:
+  image: us-east-1/ami-da0cf8b3
+  type: m1.large,m1.xlarge,m2.xlarge,m2.2xlarge,m2.4xlarge,c1.medium,c1.xlarge
+  ports: 80,50030,50070
+  service: hadoop
+  installMapred: true

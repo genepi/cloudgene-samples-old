@@ -1,0 +1,13 @@
+name: RStudio
+description: Using CloudBioLinux (Ubuntu 10.04), http://cloudbiolinux.org/
+category: VM-Images
+
+cluster:
+
+  image: us-east-1/ami-a5f120cc
+  type: t1.micro,m1.large,m1.xlarge
+  ports: 80,50030,50070
+  user: ubuntu
+  service: hadoop
+  installMapred: true
+ 

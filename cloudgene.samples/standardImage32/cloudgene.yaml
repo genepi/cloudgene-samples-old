@@ -1,0 +1,10 @@
+name: Image32Bit
+description: This is a Ubuntu 10.04 LTS (Lucid Lynx) Server 32-bit image to launch a cluster. Programs can be installed later via the MapRed web interface.
+category: VM-Images
+
+cluster:
+  image: us-east-1/ami-a403f7cd
+  type: m1.small
+  ports: 80,50030,50070
+  service: hadoop
+  installMapred: true
