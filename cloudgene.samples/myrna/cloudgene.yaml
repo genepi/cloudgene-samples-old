@@ -21,125 +21,125 @@ mapred:
   steps:
 
     - name: Preprocessing
-      mapper: Copy.pl --compress=gzip --stop=0 --maxperfile=500000 --s --push=$temp/preproc
+      mapper: source/Copy.pl --compress=gzip --stop=0 --maxperfile=500000 --s --push=$temp/preproc
       params: -input $manifest
               -output $temp/preproc
               -inputformat org.apache.hadoop.mapred.lib.NLineInputFormat
               -numReduceTasks 0
-              -file Copy.pl
-              -file Get.pm
-              -file Counters.pm
-              -file Util.pm
-              -file Tools.pm
-              -file AWS.pm
+              -file source/Copy.pl
+              -file source/Get.pm
+              -file source/Counters.pm
+              -file source/Util.pm
+              -file source/Tools.pm
+              -file source/AWS.pm
 
 
 
     - name: Alignment
-      mapper: Align.pl --discard-reads=$discard_fraction --ref=$reference --destdir=/tmp/$job_id --partlen=1000000 --qual=$quality --truncate=$trunctate_length --globals=$temp/globals --discard-mate=$discard_mate --pool-trim-length=0     -- --partition -1000000 --mm -t --hadoopout --startverbose $bowtie_args
+      mapper: source/Align.pl --discard-reads=$discard_fraction --ref=$reference --destdir=/tmp/$job_id --partlen=1000000 --qual=$quality --truncate=$trunctate_length --globals=$temp/globals --discard-mate=$discard_mate --pool-trim-length=0     -- --partition -1000000 --mm -t --hadoopout --startverbose $bowtie_args
       params: -input $temp/preproc
               -output $temp/align
               -numReduceTasks 0
-              -file Align.pl
-              -file Get.pm
-              -file Counters.pm
-              -file Util.pm
-              -file Tools.pm
-              -file AWS.pm
+              -file source/Align.pl
+              -file source/Get.pm
+              -file source/Counters.pm
+              -file source/Util.pm
+              -file source/Tools.pm
+              -file source/AWS.pm
 
 
 
     - name: Olaps
       mapper: /bin/cat
-      reducer: Assign.pl --ivaljar=$reference --maxalns=350000 --partbin=200 --influence=1 --ival-model=ui --globals=$temp/globals  --binwidth=0 --destdir=/tmp/$job_id --globals=$temp/globals
+      reducer: source/Assign.pl --ivaljar=$reference --maxalns=350000 --partbin=200 --influence=1 --ival-model=ui --globals=$temp/globals  --binwidth=0 --destdir=/tmp/$job_id --globals=$temp/globals
       params: -D stream.num.map.output.key.fields=3
               -D mapred.text.key.partitioner.options=-k1,2
               -input $temp/align
               -output $temp/olaps
               -partitioner org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner
               -numReduceTasks 32
-              -file Assign.pl
-              -file Assign.R
-              -file Get.pm
-              -file Counters.pm
-              -file Util.pm
-              -file Tools.pm
-              -file AWS.pm
+              -file source/Assign.pl
+              -file source/Assign.R
+              -file source/Get.pm
+              -file source/Counters.pm
+              -file source/Util.pm
+              -file source/Tools.pm
+              -file source/AWS.pm
 
 
 
     - name: Normal
       mapper: /bin/cat
-      reducer: Normal.pl  --normal=lup --output=$temp/count
+      reducer: source/Normal.pl  --normal=lup --output=$temp/count
       params: -D stream.num.map.output.key.fields=2
               -D mapred.text.key.partitioner.options=-k1,1
               -input $temp/olaps
               -output $temp/normal
               -partitioner org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner
               -numReduceTasks 16
-              -file Normal.pl
-              -file Get.pm
-              -file Counters.pm
-              -file Util.pm
-              -file Tools.pm
-              -file AWS.pm
+              -file source/Normal.pl
+              -file source/Get.pm
+              -file source/Counters.pm
+              -file source/Util.pm
+              -file source/Tools.pm
+              -file source/AWS.pm
 
 
 
     - name: Stats
       mapper: /bin/cat
-      reducer: Stats.pl --family=$family --errdir=/home/hadoop/ --globals=$temp/globals --destdir=/tmp/$job_id --add-fudge=0 --nulls=$nulls
+      reducer: source/Stats.pl --family=$family --errdir=/home/hadoop/ --globals=$temp/globals --destdir=/tmp/$job_id --add-fudge=0 --nulls=$nulls
       params: -D stream.num.map.output.key.fields=2
               -D mapred.text.key.partitioner.options=-k1,1
               -input $temp/normal
               -output $temp/stats
               -partitioner org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner
               -numReduceTasks 32
-              -file Stats.pl
-              -file Stats.R
-              -file Get.pm
-              -file Counters.pm
-              -file Util.pm
-              -file Tools.pm
-              -file AWS.pm
+              -file source/Stats.pl
+              -file source/Stats.R
+              -file source/Get.pm
+              -file source/Counters.pm
+              -file source/Util.pm
+              -file source/Tools.pm
+              -file source/AWS.pm
 
 
 
     - name: Summarize
       mapper: /bin/cat
-      reducer: Summarize.pl  --top=$top --nulls=$nulls --chosen-genes=$temp/chosen
+      reducer: source/Summarize.pl  --top=$top --nulls=$nulls --chosen-genes=$temp/chosen
       params: -D stream.num.map.output.key.fields=2
               -D mapred.text.key.partitioner.options=-k1,1
               -input $temp/stats
               -output $temp/summ
               -partitioner org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner
               -numReduceTasks 1
-              -file Summarize.pl
-              -file Get.pm
-              -file Counters.pm
-              -file Util.pm
-              -file Tools.pm
-              -file AWS.pm
+              -file source/Summarize.pl
+              -file source/Get.pm
+              -file source/Counters.pm
+              -file source/Util.pm
+              -file source/Tools.pm
+              -file source/AWS.pm
 
 
 
     - name: Postprocess
-      mapper: PostprocessMap.pl  --destdir=/tmp/$job_id  --chosen-genes=$temp/chosen
-      reducer: PostprocessReduce.pl --ivaljar=$reference --cores=8 --destdir=/tmp/$job_id --output=$output --counts=$temp/count --minus-log
+      mapper: source/PostprocessMap.pl  --destdir=/tmp/$job_id  --chosen-genes=$temp/chosen
+      reducer: source/PostprocessReduce.pl --ivaljar=$reference --cores=8 --destdir=/tmp/$job_id --output=$output --counts=$temp/count --minus-log
       params: -D stream.num.map.output.key.fields=3
               -D mapred.text.key.partitioner.options=-k1,2
               -input $temp/summ,$temp/normal
               -output $temp/ignoreme2
               -partitioner org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner
               -numReduceTasks 1
-              -file PostprocessMap.pl
-              -file PostprocessReduce.pl
-              -file Postprocess.R
-              -file Get.pm
-              -file Counters.pm
-              -file Util.pm
-              -file Tools.pm
-              -file AWS.pm
+              -file source/PostprocessMap.pl
+              -file source/PostprocessReduce.pl
+              -file source/Postprocess.R
+              -file source/Get.pm
+              -file source/Counters.pm
+              -file source/Util.pm
+              -file source/Tools.pm
+              -file source/AWS.pm
 
 
   inputs:
