@@ -2,7 +2,7 @@ name: Fastq Preprocessing
 description: Quality Control for high throughput sequence data in fastq format.
 version: 1.0.0
 website: http://cloudgene.uibk.ac.at
-category: NGS
+category: Exome
 author: Sebastian Schoenherr and Lukas Forer
 
 cluster:
@@ -17,27 +17,27 @@ mapred:
   steps:
 
   - name: Decompress input
-    jar: exome.jar
-    params: -step decompress -input $input -encoding $encoding -outputLocal $output_local -outputHDFS $hdfs_tmp
+    jar: exome-preprocessing.jar
+    params: -step decompress -input $input -encoding $encoding -compressed $gz -outputLocal $output_local -outputHDFS $hdfs_tmp
 
   - name: Calculating Base Quality
-    jar: exome.jar
-    params: -step baseJob -input $input -encoding $encoding -baseJob $baseQual -outputLocal $output_local -outputHDFS $hdfs_tmp
+    jar: exome-preprocessing.jar
+    params: -step baseJob -input $input -encoding $encoding -compressed $gz -baseJob $baseQual -outputLocal $output_local -outputHDFS $hdfs_tmp
 
   - name: Calculating Sequence Quality
-    jar: exome.jar
-    params: -step seqJob -input $input -encoding $encoding -seqJob $seqQual -outputLocal $output_local -outputHDFS $hdfs_tmp
+    jar: exome-preprocessing.jar
+    params: -step seqJob -input $input -encoding $encoding -compressed $gz -seqJob $seqQual -outputLocal $output_local -outputHDFS $hdfs_tmp
 
   - name: Determine Duplication Levels
-    jar: exome.jar
-    params: -step duplJob -input $input -encoding $encoding -duplJob $seqDupl -outputLocal $output_local -outputHDFS $hdfs_tmp
+    jar: exome-preprocessing.jar
+    params: -step duplJob -input $input -encoding $encoding -compressed $gz -duplJob $seqDupl -outputLocal $output_local -outputHDFS $hdfs_tmp
   
   - name: Determine Sequence Length
-    jar: exome.jar
-    params: -step lengthJob -input $input -encoding $encoding -lengthJob $lengthDist -outputLocal $output_local -outputHDFS $hdfs_tmp
+    jar: exome-preprocessing.jar
+    params: -step lengthJob -input $input -encoding $encoding -compressed $gz -lengthJob $lengthDist -outputLocal $output_local -outputHDFS $hdfs_tmp
 
   - name: Generate graphs
-    jar: exome.jar
+    jar: exome-preprocessing.jar
     params: -step export -outputLocal $output_local -baseJob $baseQual -duplJob $seqDupl -lengthJob $lengthDist -seqJob $seqQual
 
   inputs:
@@ -75,6 +75,12 @@ mapred:
       values:
         true: true
         false: false
+    - id: gz
+      description: GZ compressed?
+      type: checkbox
+      values:
+        true: true
+        false: false
     
   outputs:
     - id: output_local
@@ -85,3 +91,7 @@ mapred:
       description: output hdfs tmp
       type: hdfs-folder
       download: false
+    - id: hdfs_out
+      description: output hdfs tmp
+      type: hdfs-folder
+      download: true
