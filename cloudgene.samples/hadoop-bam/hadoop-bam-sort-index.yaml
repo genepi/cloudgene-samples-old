@@ -1,0 +1,36 @@
+name: Hadoop-BAM Sort & Index
+description: Hadoop-BAM is a novel library for the scalable manipulation of aligned next-generation sequencing data in the Hadoop distributed computing framework
+category: Hadoop-BAM
+website: http://sourceforge.net/projects/hadoop-bam/
+version: 5.0
+author: Matti Niemenmaa,  Aleksi Kallio, Andre Schumacher, Petri Klemelae, Eija Korpelainen and Keijo Heljanko
+
+ 
+mapred:
+
+  steps:
+  - name: Sort file
+    jar: hadoop-bam.jar
+    params: -libjars sam-1.76.jar,picard-1.76.jar sort --output-file=$outputfile.bam $workDIR $inputfile --verbose
+   
+  - name: Index file
+    jar: hadoop-bam.jar
+    params: -libjars sam-1.76.jar,picard-1.76.jar index $outputfile.bam $outputfile.bam.bai
+  inputs:
+    - id: inputfile
+      description: Input File
+      type: hdfs-file
+    
+  outputs:
+    - id: workDIR
+      description: Output File
+      type: hdfs-folder
+      download: false
+    - id: outputfile.bam
+      description: sorted output file
+      type: hdfs-file
+      download: true
+    - id: outputfile.bam.bai
+      description: index file
+      type: hdfs-file
+      download: true
